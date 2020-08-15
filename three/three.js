@@ -6,7 +6,6 @@ const rl = readline.createInterface({
 
 function trace(instructions, grid, wire) {
     let coords = { x: 0, y: 0 };
-    let intersections = [];
     const re = /(?<direction>[UDLR])(?<distance>\d+)/;
     for (let instruction of instructions) {
 	let match = instruction.match(re);
@@ -14,29 +13,26 @@ function trace(instructions, grid, wire) {
 	let distance = match.groups.distance;
 	switch (direction) {
 	case 'U': {
-	    grid.moveUpBy(coords, distance, wire, intersections);
+	    grid.moveUpBy(coords, distance, wire);
 	    break;
 	}
 	case 'D': {
-	    grid.moveDownBy(coords, distance, wire, intersections);
+	    grid.moveDownBy(coords, distance, wire);
 	    break;
 	}
 	case 'L': {
-	    grid.moveLeftBy(coords, distance, wire, intersections);
+	    grid.moveLeftBy(coords, distance, wire);
 	    break;
 	}
 	case 'R': {
-	    grid.moveRightBy(coords, distance, wire, intersections);
+	    grid.moveRightBy(coords, distance, wire);
 	    break;
 
 	}
 	default:
 	    throw 'Bad direction: ' + direction;
 	}
-//	console.log('coords after', instruction, coords);
     }
-//    grid.print();
-    return intersections;
 }
 
 class Grid {
@@ -48,64 +44,106 @@ class Grid {
 	console.log(JSON.stringify(this.data));
     }
 
-    get(x, y) {
+    get({x, y}) {
 	if (!this.data.hasOwnProperty(y))
 	    return undefined;
 	return this.data[y][x];
     }
 
-    set(x, y, val) {
+    set({x, y}, wire) {
 	if (!this.data.hasOwnProperty(y))
 	    this.data[y] = {};
-	this.data[y][x] = val;
+	if (!this.data[y].hasOwnProperty(x))
+	    this.data[y][x] = [];
+	let totalLength = wire.totalLength;
+	this.data[y][x].push({totalLength, wire});
     }
 
-    mark(coords, wire, intersections) {
-	if (this.get(coords.x, coords.y) != undefined && this.get(coords.x, coords.y) != wire) {
-	    intersections.push({...coords});
+    mark(coords, wire) {
+	let existing = this.get(coords);
+	if (existing) {
+	    for (let data of existing) {
+		if (data.wire === wire)
+		    continue;
+		let totalLength = wire.totalLength;
+		let intersection = {...coords};
+		wire.intersections.set(intersection, totalLength);
+		data.wire.intersections.set(intersection, data.totalLength);
+	    }
 	}
-	this.set(coords.x, coords.y, wire);
+	this.set(coords, wire);
     }
 
-    moveLeftBy(coords, distance, wire, intersections) {
+    moveLeftBy(coords, distance, wire) {
 	for (let dx = 0; dx < distance; dx++) {
 	    coords.x -= 1;
-	    this.mark(coords, wire, intersections);
+	    wire.totalLength += 1;
+	    this.mark(coords, wire);
 	}
     }
 
-    moveRightBy(coords, distance, wire, intersections) {
+    moveRightBy(coords, distance, wire) {
 	for (let dx = 0; dx < distance; dx++) {
 	    coords.x += 1;
-	    this.mark(coords, wire, intersections);
+	    wire.totalLength += 1;
+	    this.mark(coords, wire);
 	}
     }
 
-    moveUpBy(coords, distance, wire, intersections) {
+    moveUpBy(coords, distance, wire) {
 	for (let dy = 0; dy < distance; dy++) {
 	    coords.y += 1;
-	    this.mark(coords, wire, intersections);
+	    wire.totalLength += 1;
+	    this.mark(coords, wire);
 	}
     }
 
-    moveDownBy(coords, distance, wire, intersections) {
+    moveDownBy(coords, distance, wire) {
 	for (let dy = 0; dy < distance; dy++) {
 	    coords.y -= 1;
-	    this.mark(coords, wire, intersections);
+	    wire.totalLength += 1;
+	    this.mark(coords, wire);
 	}
     }
 
 }
 
+class Wire {
+    constructor(id) {
+	this.id = id;
+	this.totalLength = 0;
+	this.intersections = new Map();
+    }
+}
+
 let grid = new Grid();
-let wire = 1;
+let wireId = 1;
+let wires = [];
 rl.on('line', (line) => {
     if (line == "") {
 	rl.close();
 	return;
     }
+    let wire = new Wire(wireId++);
+    wires.push(wire);
     let instructions = line.split(',');
-    let intersections = trace(instructions, grid, wire);
-    wire++;
-    console.log('intersections: ', intersections, intersections.map(coords => Math.abs(coords.x) + Math.abs(coords.y)).sort());
+    trace(instructions, grid, wire);
+    console.log('wire', JSON.stringify(wire));
+    console.log('manhattan distances', [...wire.intersections.entries()].map(
+	([coords, totalLength]) =>
+	    Math.abs(coords.x) + Math.abs(coords.y)).sort());
+    if (wires.length > 1) {
+	let intersections = new Map();
+	for (let wire of wires) {
+	    for (let coords of wire.intersections.keys()) {
+		if (intersections.has(coords)) {
+		    intersections.set(coords,
+				      intersections.get(coords) + wire.intersections.get(coords));
+		} else {
+		    intersections.set(coords, wire.intersections.get(coords));
+		}
+	    }
+	}
+	console.log('wire distances', JSON.stringify([...intersections.values()].sort()));
+    }
 });
