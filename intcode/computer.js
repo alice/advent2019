@@ -1,8 +1,10 @@
 class Computer {
-    constructor(memory, readline) {
+    constructor(memory, readline, input_values, output_values) {
 	this.memory = memory;
 	this.rl = readline;
 	this.i = 0;
+	this.input_values = input_values || [];
+	this.output_values = output_values;
     }
 
    async run() {
@@ -50,7 +52,7 @@ class Computer {
 		break;
 	    }
 	    case 99:
-		return;
+		return this.output_values[0];;
 	    default:
 		throw "unknown opcode: " + opcode;
 	    }
@@ -88,15 +90,22 @@ class Computer {
 	let args = new Array(1)
 	this.getArgs(args, modes);
 	// console.log('getting output from ', args[0]);
-	console.log('output:', this.memory[args[0]]);
+	if (this.output_values)
+	    this.output_values.push(this.memory[args[0]]);
     }
 
     async getInput(modes) {
 	let args = new Array(1);
 	this.getArgs(args, modes);
+
+	if (this.input_values.length) {
+	    const input = this.input_values.shift();
+	    this.memory[args[0]] = input;
+	    return;
+	}
 	let promise = new Promise((resolve, reject) => {
 	    this.rl.question('input: ', (input) => {
-		console.log('got input', input);
+//		console.log('got input', input);
  		this.memory[args[0]] = parseInt(input);
 		resolve();
 	    });
