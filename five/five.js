@@ -10,11 +10,10 @@ const Computer = require('../intcode/computer.js');
 
     rl.on('line', async (line) => {
 	let opcodes_orig = line.split(',').map(x => parseInt(x));
-	console.log('opcodes_orig', opcodes_orig);
 	
-	let computer = new Computer(opcodes_orig, rl);
+	let computer = new Computer(opcodes_orig, [1]);
+	computer.name = 'A';
 	await computer.run();
-	console.log(computer.memory);
 	rl.close();
     });
 
