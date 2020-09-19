@@ -1,22 +1,56 @@
 class Computer {
-    constructor(memory, readline, input_values, output_values) {
+    constructor(memory, input_values) {
 	this.memory = memory;
-	this.rl = readline;
 	this.i = 0;
 	this.input_values = input_values || [];
-	this.output_values = output_values;
+	this.input_callbacks = [];
+	this.output_callback = console.log;
+	this.last_output = null;
     }
 
-   async run() {
+    input(input) {
+//	console.log(this.name, this.input_callbacks.length, 'input_callbacks');
+	if (this.input_callbacks.length > 0) {
+	    console.log(this.name,  'got input', input, 'via input method');
+	    this.input_callbacks.pop().call(this, input);
+	    return;
+	}
+//	console.log('no awaiting callback on', this.name);
+	this.input_values.push(input);
+    }
+
+    get(address) {
+	if (address < this.memory.length)
+	    return this.memory[address];
+	console.trace()
+	throw('get: invalid address: ' + address);
+    }
+
+    set(address, value) {
+	if (value === undefined) {
+	    console.log('setting undefined');
+	    console.trace();
+	    throw('setting undefined');
+	}
+	if (address < this.memory.length) {
+	    this.memory[address] = value;
+	    return;
+	}
+	console.trace()
+	throw('set: invalid address: ' + address);
+    }	    
+
+    async run() {
+	console.log('run ' + this.name);
 	while (true) {
-	    let instruction = this.memory[this.i];
+	    let instruction = this.get(this.i);
 	    this.i += 1;
 	    const opcode = instruction % 100;
 	    console.log('opcode: ' + opcode);
 	    instruction = Math.floor(instruction / 100);
 	    let modes = [];
 	    while (instruction > 0) {
-		modes.push (instruction % 10);
+		modes.push(instruction % 10);
 		instruction = Math.floor(instruction / 10);
 	    }
 	    switch(opcode) {
@@ -53,7 +87,8 @@ class Computer {
 		break;
 	    }
 	    case 99:
-		return this.output_values[0];;
+		console.log(this.name, 'done');
+		return true;
 	    default:
 		throw "unknown opcode: " + opcode;
 	    }
@@ -66,7 +101,7 @@ class Computer {
 	    if (immediate) {
 		args[a] = this.i;
 	    } else {
-		args[a] = this.memory[this.i];
+		args[a] = this.get(this.i);
 	    }
 	    this.i += 1;
 	}
@@ -74,78 +109,87 @@ class Computer {
 
     add(modes) {
 	let args = new Array(3);
-	this.getArgs(args, modes)
-	console.log('add', args);
-	this.memory[args[2]] = this.memory[args[0]] + this.memory[args[1]];
+	this.getArgs(args, modes);
+//	console.log(this.name, 'add', args, 'this.set(', args[2], ',',
+//		    this.get(args[0]), '+', this.get(args[1]), ')');
+	this.set(args[2], this.get(args[0]) + this.get(args[1]));
     }
 
     multiply(modes) {
 	let args = new Array(3);
 	this.getArgs(args, modes);
-	// console.log('multiply', args);
-	this.memory[args[2]] = this.memory[args[0]] * this.memory[args[1]];
-	// console.log('after multiply', this.memory);
+//	console.log(this.name, 'multiply', args, 'this.set(', args[2], ', ',
+//		    this.get(args[0]), '*',  this.get(args[1]), ')');
+	this.set(args[2], this.get(args[0]) * this.get(args[1]));
     }
-
+    
     output(modes) {
 	let args = new Array(1)
 	this.getArgs(args, modes);
-	if (this.output_values)
-	    this.output_values.push(this.memory[args[0]]);
-	console.log('output: ' + this.memory[args[0]]);
+	console.log(this.name, 'output', this.memory[args[0]]);
+	this.output_callback.call(null, this.get(args[0]));
+    }
+
+    input_promise() {
+	let callbacks = this.input_callbacks;
+	let input_values = this.input_values;
+	let promise = new Promise((resolve, reject) => {
+	    if (input_values.length > 0) {
+//		console.log(this.name, 'got input', input_values[0], 'from input_values')
+                resolve(this.input_values.shift());
+		return;
+	    } else {
+		console.log(this.name + ' awaiting input');
+		this.input_callbacks.push(resolve);
+//		console.log(this.name, this.input_callbacks.length, 'input_callbacks');
+	    }
+	});
+	return promise;
     }
 
     async getInput(modes) {
 	let args = new Array(1);
 	this.getArgs(args, modes);
+	let address = args[0];
 
-	if (this.input_values.length) {
-	    const input = this.input_values.shift();
-	    this.memory[args[0]] = input;
-	    console.log('got input', input);
-	    return;
-	}
-	let promise = new Promise((resolve, reject) => {
-	    this.rl.question('input: ', (input) => {
-//		console.log('got input', input);
- 		this.memory[args[0]] = parseInt(input);
-		resolve();
-	    });
-	});
-	await promise;
+	const input = await this.input_promise();
+	console.log('got input', input, 'on', this.name)
+	this.set(address, input);
     }
 
     jumpIfTrue(modes) {
 	let args = new Array(2);
 	this.getArgs(args, modes);
-	if (this.memory[args[0]] !== 0)
-	    this.i = this.memory[args[1]];
+//	console.log(this.name, 'jumpIfTrue', args, this.memory[args[0]], this.memory[args[1]]);
+	if (this.get(args[0]) !== 0)
+	    this.i = this.get(args[1]);
     }
 
     jumpIfFalse(modes) {
 	let args = new Array(2);
 	this.getArgs(args, modes);
-	if (this.memory[args[0]] === 0)
-	    this.i = this.memory[args[1]];
+//	console.log(this.name, 'jumpIfFalse', args, this.memory[args[0]], this.memory[args[1]]);
+	if (this.get(args[0]) === 0)
+	    this.i = this.get(args[1]);
     }
 
     lessThan(modes) {
 	let args = new Array(3);
 	this.getArgs(args, modes);
-	if (this.memory[args[0]] < this.memory[args[1]])
-	    this.memory[args[2]] = 1;
+	if (this.get(args[0]) < this.get(args[1]))
+	    this.set(args[2], 1);
 	else
-	    this.memory[args[2]] = 0;
+	    this.set(args[2], 0);
     }
 
 
     equals(modes) {
 	let args = new Array(3);
 	this.getArgs(args, modes);
-	if (this.memory[args[0]] === this.memory[args[1]])
-	    this.memory[args[2]] = 1;
+	if (this.get(args[0]) === this.get(args[1]))
+	    this.set(args[2], 1);
 	else
-	    this.memory[args[2]] = 0;
+	    this.set(args[2], 0);
     }
 
 }
