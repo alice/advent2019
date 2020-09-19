@@ -44,13 +44,16 @@ async function runPermutation(program, settings_permutation, signal) {
     let next_name = 'A';
 
     for (setting of settings_permutation) {
-	let computer = new Computer(program, [setting]);
+	let computer = new Computer(program.slice(), [setting]);
 	computer.name = next_name;
 	next_name = String.fromCharCode(next_name.charCodeAt(0) + 1);
 	console.log(computer.name + ' has setting ' + setting);
 	if (computers.length > 0) {
 	    let previous_computer = computers[0];
-	    previous_computer.output_callback = computer.input;
+	    previous_computer.output_callback = (value) => {
+		console.log('output_callback', value);
+		computer.input(value);
+	    };
 	    console.log(previous_computer.name + ' output_callback is ' +
 			computer.name + ' input');
 	} else {
@@ -60,11 +63,10 @@ async function runPermutation(program, settings_permutation, signal) {
 	computers.unshift(computer);
     }
     let output = null;
-    computers[0].output_callback = (value) => {
-	output = value;
-    }
+    computers[0].output_callback = (value) => { output = value; };
     console.log(computers[0].name + ' output_callback is ' +
 		computers[0].output_callback.toString());
+    computers.reverse();
     await Promise.all(computers.map((computer) => computer.run()));
     console.log('output is ' + output);
     return output;
