@@ -84,7 +84,9 @@ class Computer {
 
     add(modes) {
 	let args = new Array(3);
-	this.getArgs(args, modes)
+	this.getArgs(args, modes);
+	console.log('add', args);
+	console.log('memory[' + args[2] + '] = ' + this.memory[args[0]] + ' + ' + this.memory[args[1]]);
 	this.memory[args[2]] = this.memory[args[0]] + this.memory[args[1]];
     }
 
