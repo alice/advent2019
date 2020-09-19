@@ -1,7 +1,6 @@
 class Computer {
     constructor(memory, input_values) {
 	this.memory = memory;
-	console.log('constructed computer with', memory.length, 'instructions');
 	this.i = 0;
 	this.input_values = input_values || [];
 	this.input_callbacks = [];
@@ -10,14 +9,13 @@ class Computer {
     }
 
     input(input) {
-	console.log('input function called on', this.name);
-	console.log(this.name, this.input_callbacks.length, 'input_callbacks');
+//	console.log(this.name, this.input_callbacks.length, 'input_callbacks');
 	if (this.input_callbacks.length > 0) {
 	    console.log(this.name,  'got input', input, 'via input method');
 	    this.input_callbacks.pop().call(this, input);
 	    return;
 	}
-	console.log('no awaiting callback on', this.name);
+//	console.log('no awaiting callback on', this.name);
 	this.input_values.push(input);
     }
 
@@ -34,7 +32,6 @@ class Computer {
 	    console.trace();
 	    throw('setting undefined');
 	}
-	console.log('set on', this.name);
 	if (address < this.memory.length) {
 	    this.memory[address] = value;
 	    return;
@@ -49,7 +46,6 @@ class Computer {
 	    let instruction = this.get(this.i);
 	    this.i += 1;
 	    const opcode = instruction % 100;
-	    console.log(this.name, 'opcode', opcode);
 	    instruction = Math.floor(instruction / 100);
 	    let modes = [];
 	    while (instruction > 0) {
@@ -90,6 +86,7 @@ class Computer {
 		break;
 	    }
 	    case 99:
+		console.log(this.name, 'done');
 		return true;
 	    default:
 		throw "unknown opcode: " + opcode;
@@ -112,23 +109,23 @@ class Computer {
     add(modes) {
 	let args = new Array(3);
 	this.getArgs(args, modes);
-	console.log(this.name, 'add', args, 'this.set(', args[2], ',',
-		    this.get(args[0]), '+', this.get(args[1]), ')');
+//	console.log(this.name, 'add', args, 'this.set(', args[2], ',',
+//		    this.get(args[0]), '+', this.get(args[1]), ')');
 	this.set(args[2], this.get(args[0]) + this.get(args[1]));
     }
 
     multiply(modes) {
 	let args = new Array(3);
 	this.getArgs(args, modes);
-	console.log(this.name, 'multiply', args, 'this.set(', args[2], ', ',
-		    this.get(args[0]), '*',  this.get(args[1]), ')');
+//	console.log(this.name, 'multiply', args, 'this.set(', args[2], ', ',
+//		    this.get(args[0]), '*',  this.get(args[1]), ')');
 	this.set(args[2], this.get(args[0]) * this.get(args[1]));
     }
     
     output(modes) {
 	let args = new Array(1)
 	this.getArgs(args, modes);
-	console.log(this.name, 'output', args, this.memory[args[0]]);
+	console.log(this.name, 'output', this.memory[args[0]]);
 	this.output_callback.call(null, this.get(args[0]));
     }
 
@@ -137,13 +134,13 @@ class Computer {
 	let input_values = this.input_values;
 	let promise = new Promise((resolve, reject) => {
 	    if (input_values.length > 0) {
-		console.log(this.name, 'got input', input_values[0], 'from input_values')
+//		console.log(this.name, 'got input', input_values[0], 'from input_values')
                 resolve(this.input_values.shift());
 		return;
 	    } else {
 		console.log(this.name + ' awaiting input');
 		this.input_callbacks.push(resolve);
-		console.log(this.name, this.input_callbacks.length, 'input_callbacks');
+//		console.log(this.name, this.input_callbacks.length, 'input_callbacks');
 	    }
 	});
 	return promise;
@@ -162,7 +159,7 @@ class Computer {
     jumpIfTrue(modes) {
 	let args = new Array(2);
 	this.getArgs(args, modes);
-	console.log(this.name, 'jumpIfTrue', args, this.memory[args[0]], this.memory[args[1]]);
+//	console.log(this.name, 'jumpIfTrue', args, this.memory[args[0]], this.memory[args[1]]);
 	if (this.get(args[0]) !== 0)
 	    this.i = this.get(args[1]);
     }
@@ -170,7 +167,7 @@ class Computer {
     jumpIfFalse(modes) {
 	let args = new Array(2);
 	this.getArgs(args, modes);
-	console.log(this.name, 'jumpIfFalse', args, this.memory[args[0]], this.memory[args[1]]);
+//	console.log(this.name, 'jumpIfFalse', args, this.memory[args[0]], this.memory[args[1]]);
 	if (this.get(args[0]) === 0)
 	    this.i = this.get(args[1]);
     }

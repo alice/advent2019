@@ -6,40 +6,40 @@ const rl = readline.createInterface({
 });
 const Computer = require('../intcode/computer.js');
 
-const settings = [0, 1, 2, 3, 4];
+const settings = [5, 6, 7, 8, 9];
 
 rl.on('line', async (line) => {
     let program = line.split(',').map(x => parseInt(x));
     let signal = 0;
 
-    let max = await trySettings(settings.slice(), program, [], signal);
+    let max = await trySettings(settings.slice(), program, [], signal, true);
 
     console.log('max: ', max);
     rl.close();
 });
 
-async function trySettings(settings, program, settings_permutation, signal) {
+async function trySettings(settings, program, settings_permutation, signal, feedback) {
     let max = 0;
     for (let i = 0; i < settings.length; i++) {
 	let setting = settings.splice(i, 1)[0];
 	settings_permutation.push(setting);
 	if (settings.length > 0) {
 	    max = Math.max(max, await trySettings(settings.slice(), program,
-						  settings_permutation, signal));
+						  settings_permutation, signal, feedback));
 	} else {
 	    console.log('running permutation: ' + settings_permutation);
-	    let output = await runPermutation(program, settings_permutation, signal);
+	    let output = await runPermutation(program, settings_permutation, signal, feedback);
 	    max = Math.max(max, output);
 	    console.log('output: ' + output + '; max: ' + max);
 	}
 	settings_permutation.pop();
 	settings.splice(i, 0, setting);
-	return max;
     }
     return max;
 }
 
-async function runPermutation(program, settings_permutation, signal) {
+async function runPermutation(program, settings_permutation, signal, feedback) {
+    console.log('runPermutation', feedback);
     let computers = [];
     let next_name = 'A';
 
@@ -63,12 +63,23 @@ async function runPermutation(program, settings_permutation, signal) {
 	computers.unshift(computer);
     }
     let output = null;
-    computers[0].output_callback = (value) => { output = value; };
+    if (feedback) {
+	last_computer = computers[0];
+	first_computer = computers[computers.length - 1];
+	last_computer.output_callback = (value) => {
+	    output = value;
+	    first_computer.input(value);
+	};
+	console.log(computers[0].name, 'output_callback is',
+		    computers[computers.length - 1].name, 'input');
+    } else {
+	computers[0].output_callback = (value) => { output = value; };
+    }
     console.log(computers[0].name + ' output_callback is ' +
 		computers[0].output_callback.toString());
     computers.reverse();
     await Promise.all(computers.map((computer) => computer.run()));
-    console.log('output is ' + output);
+    console.log('output is ' + output, feedback);
     return output;
 }
 
