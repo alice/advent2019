@@ -12,9 +12,9 @@ const Computer = require('../intcode/computer.js');
 	let opcodes_orig = line.split(',').map(x => parseInt(x));
 	console.log('opcodes_orig', opcodes_orig);
 	
-	let computer = new Computer(opcodes_orig, rl);
-	await computer.run();
-	console.log(computer.memory);
+	let computer = new Computer(opcodes_orig, rl, [1], []);
+	output_value = await computer.run();
+	console.log('output_value: ' + output_value);
 	rl.close();
     });
 

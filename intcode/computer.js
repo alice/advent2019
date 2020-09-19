@@ -12,6 +12,7 @@ class Computer {
 	    let instruction = this.memory[this.i];
 	    this.i += 1;
 	    const opcode = instruction % 100;
+	    console.log('opcode: ' + opcode);
 	    instruction = Math.floor(instruction / 100);
 	    let modes = [];
 	    while (instruction > 0) {
@@ -74,7 +75,7 @@ class Computer {
     add(modes) {
 	let args = new Array(3);
 	this.getArgs(args, modes)
-	// console.log('add', args);
+	console.log('add', args);
 	this.memory[args[2]] = this.memory[args[0]] + this.memory[args[1]];
     }
 
@@ -89,9 +90,9 @@ class Computer {
     output(modes) {
 	let args = new Array(1)
 	this.getArgs(args, modes);
-	// console.log('getting output from ', args[0]);
 	if (this.output_values)
 	    this.output_values.push(this.memory[args[0]]);
+	console.log('output: ' + this.memory[args[0]]);
     }
 
     async getInput(modes) {
@@ -101,6 +102,7 @@ class Computer {
 	if (this.input_values.length) {
 	    const input = this.input_values.shift();
 	    this.memory[args[0]] = input;
+	    console.log('got input', input);
 	    return;
 	}
 	let promise = new Promise((resolve, reject) => {
