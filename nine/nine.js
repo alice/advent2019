@@ -14,7 +14,7 @@ rl.on('line', async (line) => {
 	return n;
     });
     let signal = 0;
-    let computer = new Computer(program, [1]);
+    let computer = new Computer(program, [2]);
     computer.output_callback = (output) => { console.log("output:", output); };
     computer.run();
 
