@@ -1,7 +1,12 @@
+const POSITION_MODE = 0;
+const IMMEDIATE_MODE = 1;
+const RELATIVE_MODE = 2;
+
 class Computer {
     constructor(memory, input_values) {
 	this.memory = memory;
 	this.i = 0;
+	this.relative_base = 0;
 	this.input_values = input_values || [];
 	this.input_callbacks = [];
 	this.output_callback = console.log;
@@ -9,21 +14,25 @@ class Computer {
     }
 
     input(input) {
-//	console.log(this.name, this.input_callbacks.length, 'input_callbacks');
 	if (this.input_callbacks.length > 0) {
 	    console.log(this.name,  'got input', input, 'via input method');
 	    this.input_callbacks.pop().call(this, input);
 	    return;
 	}
-//	console.log('no awaiting callback on', this.name);
 	this.input_values.push(input);
     }
 
     get(address) {
+	if (address < 0) {
+	    throw('get: invalid address: ' + address);
+	    return;
+	}
+
 	if (address < this.memory.length)
 	    return this.memory[address];
-	console.trace()
-	throw('get: invalid address: ' + address);
+
+	this.memory[address] = 0;
+	return 0;
     }
 
     set(address, value) {
@@ -32,7 +41,7 @@ class Computer {
 	    console.trace();
 	    throw('setting undefined');
 	}
-	if (address < this.memory.length) {
+	if (address > 0) {
 	    this.memory[address] = value;
 	    return;
 	}
@@ -41,12 +50,10 @@ class Computer {
     }	    
 
     async run() {
-	console.log('run ' + this.name);
 	while (true) {
 	    let instruction = this.get(this.i);
 	    this.i += 1;
 	    const opcode = instruction % 100;
-	    console.log('opcode: ' + opcode);
 	    instruction = Math.floor(instruction / 100);
 	    let modes = [];
 	    while (instruction > 0) {
@@ -86,8 +93,11 @@ class Computer {
 		this.equals(modes);
 		break;
 	    }
+	    case 9: {
+		this.adjustRelativeBase(modes);
+		break;
+	    }
 	    case 99:
-		console.log(this.name, 'done');
 		return true;
 	    default:
 		throw "unknown opcode: " + opcode;
@@ -97,11 +107,19 @@ class Computer {
 
     getArgs(args, modes) {
 	for (let a = 0; a < args.length; a++) {
-	    let immediate = modes[a] || 0;
-	    if (immediate) {
+	    let mode = modes[a] || 0;
+	    switch (mode) {
+	    case IMMEDIATE_MODE:
 		args[a] = this.i;
-	    } else {
+		break;
+	    case RELATIVE_MODE: {
+		args[a] = this.get(this.i) + this.relative_base;
+		break;
+	    }
+	    case POSITION_MODE:
+	    default:
 		args[a] = this.get(this.i);
+		break;
 	    }
 	    this.i += 1;
 	}
@@ -110,23 +128,18 @@ class Computer {
     add(modes) {
 	let args = new Array(3);
 	this.getArgs(args, modes);
-//	console.log(this.name, 'add', args, 'this.set(', args[2], ',',
-//		    this.get(args[0]), '+', this.get(args[1]), ')');
 	this.set(args[2], this.get(args[0]) + this.get(args[1]));
     }
 
     multiply(modes) {
 	let args = new Array(3);
 	this.getArgs(args, modes);
-//	console.log(this.name, 'multiply', args, 'this.set(', args[2], ', ',
-//		    this.get(args[0]), '*',  this.get(args[1]), ')');
 	this.set(args[2], this.get(args[0]) * this.get(args[1]));
     }
     
     output(modes) {
 	let args = new Array(1)
 	this.getArgs(args, modes);
-	console.log(this.name, 'output', this.memory[args[0]]);
 	this.output_callback.call(null, this.get(args[0]));
     }
 
@@ -135,13 +148,10 @@ class Computer {
 	let input_values = this.input_values;
 	let promise = new Promise((resolve, reject) => {
 	    if (input_values.length > 0) {
-//		console.log(this.name, 'got input', input_values[0], 'from input_values')
                 resolve(this.input_values.shift());
 		return;
 	    } else {
-		console.log(this.name + ' awaiting input');
 		this.input_callbacks.push(resolve);
-//		console.log(this.name, this.input_callbacks.length, 'input_callbacks');
 	    }
 	});
 	return promise;
@@ -153,14 +163,12 @@ class Computer {
 	let address = args[0];
 
 	const input = await this.input_promise();
-	console.log('got input', input, 'on', this.name)
 	this.set(address, input);
     }
 
     jumpIfTrue(modes) {
 	let args = new Array(2);
 	this.getArgs(args, modes);
-//	console.log(this.name, 'jumpIfTrue', args, this.memory[args[0]], this.memory[args[1]]);
 	if (this.get(args[0]) !== 0)
 	    this.i = this.get(args[1]);
     }
@@ -168,7 +176,6 @@ class Computer {
     jumpIfFalse(modes) {
 	let args = new Array(2);
 	this.getArgs(args, modes);
-//	console.log(this.name, 'jumpIfFalse', args, this.memory[args[0]], this.memory[args[1]]);
 	if (this.get(args[0]) === 0)
 	    this.i = this.get(args[1]);
     }
@@ -192,6 +199,11 @@ class Computer {
 	    this.set(args[2], 0);
     }
 
+    adjustRelativeBase(modes) {
+	let args = new Array(1);
+	this.getArgs(args, modes);
+	this.relative_base += this.get(args[0]);
+    }
 }
 
 module.exports = Computer;
