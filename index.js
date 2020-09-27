@@ -23,6 +23,8 @@ if (argv._.includes('one')) {
     require('./eight/eight.js');
 } else if (argv._.includes('nine')) {
     require('./nine/nine.js');
+} else if (argv._.includes('ten')) {
+    require('./ten/ten.js');
 } else {
     console.log('yargs: ' + JSON.stringify(argv));
     console.log('args: ' + JSON.stringify(process.argv));
