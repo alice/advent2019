@@ -31,7 +31,7 @@ rl.on('close', () => {
 	for (const [index2, p2] of asteroids.entries()) {
 	    if (index1 === index2)
 		continue;
-	    if (hasSightLine(p1, p2))
+	    if (hasSightline(p1, p2))
 		sightlines++;
 	}
 	if (sightlines > max_sightlines) {
@@ -42,78 +42,64 @@ rl.on('close', () => {
     }
 
     console.log('best_asteroid:', best_asteroid, 'with', max_sightlines, 'sightlines');
+
+    let outside_points = [];
+    for (let x = best_asteroid.x; x <= max_x; x++)
+	outside_points.push({x: x, y: 0});
+    for (let y = 1; y <= max_y; y++)
+	outside_points.push({x: max_x, y: y});
+    for (let x = max_x; x >= 0; x--)
+	outside_points.push({x: x, y: max_y});
+    for (let y = max_y - 1; y >= 0; y--)
+	outside_points.push({x: 0, y: y});
+    for (let x = 1; x < best_asteroid.x; x++)
+	outside_points.push({x: x, y: 0});
+    
 });
 
 
-
+function hasSightline(p1, p2) {
+    let p = firstOnSightline(p1, p2);
+    return p.x === p2.x && p.y === p2.y;
+}
 
 // y = ((y2−y1)/(x2−x1))(x – x1) + y1
 // m = (y2 - y1)/(x2-x1)
 // y = mx - mx1 + y1
 // b = -mx1 + y1
 // y = mx + b
-function hasSightLine(p1, p2) {
+function firstOnSightline(p1, p2) {
     if (p1.x === p2.x) {
 	let x = p1.x;
-	if (p2.y < p1.y) { 
-	    for (let y = p1.y - 1; y >= p2.y; y--) {
-		if (y === p2.y)
-		    return true;
-		
-		const p = find(x, y);
-		if (p)
-		    return false;
-	    }
-	} else {
-	    for (let y = p1.y + 1; y <= max_y; y++) {
-		if (y === p2.y)
-		    return true;
 
-		const p = find(x, y);
-		if (p)
-		    return false;
-	    }
-	    throw ('didn\'t find', p2);
+	let delta_y = p2.y - p1.y;
+	let sign = Math.sign(delta_y);
+	for (let i = 1; i <= Math.abs(delta_y); i++) {
+	    let y = p1.y + (sign * i);
+ 	    const p = find(x, y);
+	    if (p)
+		return p;
 	}
+	return null;
     }
     
     const m = (p2.y - p1.y) / (p2.x - p1.x);
     const b = (-m * p1.x) + p1.y;
     console.assert(p2.y == adjust(m*p2.x + b), adjust(m*p2.x + b));
 
-    if (p2.x < p1.x) {
-	for (let x = p1.x - 1; x >= p2.x; x--) {
-	    y = adjust(m*x + b);
-	    if (!Number.isInteger(y))
-		continue;
-	    if (y < 0 || y > max_y)
-		continue;
+    let delta_x = p2.x - p1.x;
+    let sign = Math.sign(delta_x);
+    for (let i = 1; i <= Math.abs(delta_x); i++) {
+	let x = p1.x + (sign * i);
+	let y = adjust(m*x + b);
+	if (!Number.isInteger(y) || y < 0 || y > max_y)
+	    continue;
 	
-	    if (x === p2.x && y === p2.y)
-		return true;
-
-	    const p = find(x, y);
-	    if (p)
-		return false;
-	}
-    } else {
-	for (let x = p1.x + 1; x <= p2.x; x++) {
-	    y = adjust(m*x + b);
-	    if (!Number.isInteger(y))
-		continue;
-	    if (y < 0 || y > max_y)
-		continue;
-	
-	    if (x === p2.x && y === p2.y)
-		return true;
-	    
-	    const p = find(x, y);
-	    if (p)
-		return false;
-	}
+	const p = find(x, y);
+	if (p)
+	    return p;
     }
-    console.log('coding error: did not find', p2, 'from', p1);
-    throw('');
+    return null
 }
 
 function adjust(n) {
