@@ -38,36 +38,51 @@ rl.on('close', () => {
 	    max_sightlines = sightlines;
 	    best_asteroid = p1;
 	}
-
     }
 
-    console.log('best_asteroid:', best_asteroid, 'with', max_sightlines, 'sightlines');
+    console.log('best is', best_asteroid, max_sightlines);
 
-    let outside_points = [];
-    for (let x = best_asteroid.x; x <= max_x; x++)
-	outside_points.push({x: x, y: 0});
-    for (let y = 1; y <= max_y; y++)
-	outside_points.push({x: max_x, y: y});
-    for (let x = max_x; x >= 0; x--)
-	outside_points.push({x: x, y: max_y});
-    for (let y = max_y - 1; y >= 0; y--)
-	outside_points.push({x: 0, y: y});
-    for (let x = 1; x < best_asteroid.x; x++)
-	outside_points.push({x: x, y: 0});
+    console.log('straight up is', computeAngle(best_asteroid, {x: best_asteroid.x, y: 0}));
+    console.log('top right is', computeAngle(best_asteroid, {x: max_x, y: 0}));
+    console.log('straight right is', computeAngle(best_asteroid, {x: max_x, y: best_asteroid.y}));
+    console.log('bottom right is', computeAngle(best_asteroid, {x: max_x, y: max_y}));
+    console.log('straight down is', computeAngle(best_asteroid, {x: best_asteroid.x, y: max_y}));
+    console.log('bottom left is', computeAngle(best_asteroid, {x: 0, y: max_y}));
+    console.log('straight left is', computeAngle(best_asteroid, {x: 0, y: best_asteroid.y}));
+    console.log('top left is', computeAngle(best_asteroid, {x: 0, y: 0}));
     
-});
 
+    let vaporized = 0;
+    while (asteroids.length > 1) {
+	let asteroid_angles = [];
+	for (const asteroid of asteroids) {
+	    if (asteroid === best_asteroid)
+		continue;
+	    const angle = computeAngle(best_asteroid, asteroid)
+	    asteroid_angles.push({angle, asteroid});
+	}
+	asteroid_angles.sort((a1, a2) => { return a1.angle - a2.angle; });
+
+	let prev_angle = -1;
+	for (let [i, {angle, asteroid}] of asteroid_angles.entries()) {
+	    if (angle === prev_angle)
+		continue;
+
+	    target = firstOnSightline(best_asteroid, asteroid);
+	    asteroids.splice(asteroids.indexOf(target), 1);
+	    vaporized++;
+	    if (vaporized % 10 === 0)
+		console.log(vaporized, 'vaporized', angle.toPrecision(4),  asteroid);
+	    prev_angle = angle;
+	}
+    }
+});
 
 function hasSightline(p1, p2) {
     let p = firstOnSightline(p1, p2);
     return p.x === p2.x && p.y === p2.y;
 }
 
-// y = ((y2−y1)/(x2−x1))(x – x1) + y1
-// m = (y2 - y1)/(x2-x1)
-// y = mx - mx1 + y1
-// b = -mx1 + y1
-// y = mx + b
 function firstOnSightline(p1, p2) {
     if (p1.x === p2.x) {
 	let x = p1.x;
@@ -110,4 +125,15 @@ function find(x, y) {
     return asteroids.find(({x: px, y: py}) => {
 	return px === x && py === y;
     });
+}
+
+function computeAngle(p1, p2) {
+    const dx = p2.x - p1.x;
+    const dy = p2.y - p1.y;
+
+    const angleFromXAxis = Math.atan2(dy, dx) * 180/Math.PI;
+    let angleFromYAxis = angleFromXAxis + 90;
+    if (angleFromYAxis < 0)
+	angleFromYAxis += 360;
+    return angleFromYAxis;
 }
