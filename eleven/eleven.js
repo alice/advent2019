@@ -23,8 +23,9 @@ rl.on('line', async(line) => {
 	});
 	return promise;
     };
-    computer.run();
+    await computer.run();
     console.log(robot.painted.size, 'painted');
+    robot.print();
 });
       
 const PAINT = 0;
@@ -50,7 +51,10 @@ class Robot {
 	this.direction = UP;
 	this.next_op = PAINT;
 	this.painted_white = new Set();
-	this.painted = new Set();
+	this.painted_white.add(JSON.stringify(this.location));
+	this.painted = new Set(this.painted_white);
+	this.top_left = {x: 0, y: 0};
+	this.bottom_right = {x: 0, y: 0};
     }
 
     instruction(input) {
@@ -83,7 +87,6 @@ class Robot {
 	}
 
 	this.painted.add(JSON.stringify(this.location));
-	console.log(this.painted.size, 'painted');
     }
 
     turn(input) {
@@ -111,6 +114,29 @@ class Robot {
 	default:
 	    this.location.x -= 1;
 	    break;
+	}
+
+	if (this.location.x < this.top_left.x)
+	    this.top_left.x = this.location.x;
+	if (this.location.y < this.top_left.y)
+	    this.top_left.y = this.location.y;
+	if (this.location.x > this.bottom_right.x)
+	    this.bottom_right.x = this.location.x;
+	if (this.location.y > this.bottom_right.y)
+	    this.bottom_right.y = this.location.y;
+    }
+
+    print() {
+	for (let y = this.top_left.y; y <= this.bottom_right.y; y++) {
+	    let row = '';
+	    for (let x = this.top_left.x; x <= this.bottom_right.x; x++) {
+		const point = {x, y};
+		if (this.painted_white.has(JSON.stringify(point)))
+		    row += '#';
+		else
+		    row += ' ';
+	    }
+	    console.log(row);
 	}
     }
 }
